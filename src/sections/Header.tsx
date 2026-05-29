@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { Menu, X } from 'lucide-react'
 
 interface HeaderProps {
   scrollRef: React.MutableRefObject<{ y: number; speed: number }>
@@ -28,6 +29,7 @@ function getOAuthUrl() {
 export default function Header({ scrollRef, forceLight = false }: HeaderProps) {
   const [isCompact, setIsCompact] = useState(false)
   const [overHeroRaw, setOverHeroRaw] = useState(true)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const rafRef = useRef<number>(0)
 
   useEffect(() => {
@@ -41,77 +43,169 @@ export default function Header({ scrollRef, forceLight = false }: HeaderProps) {
     return () => cancelAnimationFrame(rafRef.current)
   }, [scrollRef])
 
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [mobileMenuOpen])
+
   const overHero = overHeroRaw && !forceLight
   const { user, isAuthenticated, logout } = useAuth({ redirectPath: '/' })
 
   const handleNavClick = (index: number) => {
+    setMobileMenuOpen(false)
     const target = document.querySelector(sectionIds[index])
     if (target) {
       target.scrollIntoView({ behavior: 'smooth' })
     }
   }
 
+  const handleSignIn = () => {
+    setMobileMenuOpen(false)
+    window.location.href = getOAuthUrl()
+  }
+
+  const handleSignOut = () => {
+    setMobileMenuOpen(false)
+    logout()
+  }
+
+  const handleLogoClick = () => {
+    setMobileMenuOpen(false)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   const textColor = overHero ? '#ffffff' : '#000000'
 
   return (
-    <header
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: isCompact ? '64px' : '88px',
-        backgroundColor: overHero ? 'transparent' : '#ffffff',
-        borderBottom: overHero
-          ? '1px solid rgba(255,255,255,0.18)'
-          : '1px solid #000000',
-        zIndex: 100,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 clamp(20px, 4vw, 60px)',
-        transition:
-          'height 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease, border-color 0.4s ease',
-      }}
-    >
-      <div
+    <>
+      <header
         style={{
-          fontSize: '18px',
-          fontWeight: 500,
-          letterSpacing: '0.22em',
-          cursor: 'pointer',
-          color: textColor,
-          transition: 'color 0.4s ease',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: isCompact ? '64px' : '88px',
+          backgroundColor: overHero ? 'transparent' : '#ffffff',
+          borderBottom: overHero
+            ? '1px solid rgba(255,255,255,0.18)'
+            : '1px solid #000000',
+          zIndex: 100,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 clamp(20px, 4vw, 60px)',
+          transition:
+            'height 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s ease, border-color 0.4s ease',
         }}
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
       >
-        WAYKAMBAS
-      </div>
+        {/* Logo */}
+        <div
+          style={{
+            fontSize: '18px',
+            fontWeight: 500,
+            letterSpacing: '0.22em',
+            cursor: 'pointer',
+            color: textColor,
+            transition: 'color 0.4s ease',
+          }}
+          onClick={handleLogoClick}
+        >
+          WAYKAMBAS
+        </div>
 
-      <nav style={{ display: 'flex', alignItems: 'stretch', height: '100%' }}>
-        {navItems.map((item, i) => (
-          <NavItem
-            key={item}
-            label={item}
-            overHero={overHero}
-            onClick={() => handleNavClick(i)}
-          />
-        ))}
-        {isAuthenticated && user ? (
-          <NavItem
-            label="Sign Out"
-            overHero={overHero}
-            onClick={logout}
-          />
-        ) : (
-          <NavItem
-            label="Sign In"
-            overHero={overHero}
-            onClick={() => { window.location.href = getOAuthUrl() }}
-          />
-        )}
-      </nav>
-    </header>
+        {/* Desktop Nav */}
+        <nav
+          style={{ display: 'flex', alignItems: 'stretch', height: '100%' }}
+          className="hidden md:flex"
+        >
+          {navItems.map((item, i) => (
+            <NavItem
+              key={item}
+              label={item}
+              overHero={overHero}
+              onClick={() => handleNavClick(i)}
+            />
+          ))}
+          {isAuthenticated && user ? (
+            <NavItem
+              label="Sign Out"
+              overHero={overHero}
+              onClick={logout}
+            />
+          ) : (
+            <NavItem
+              label="Sign In"
+              overHero={overHero}
+              onClick={() => {
+                window.location.href = getOAuthUrl()
+              }}
+            />
+          )}
+        </nav>
+
+        {/* Mobile Hamburger Button */}
+        <button
+          className="md:hidden flex items-center justify-center"
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          style={{
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer',
+            padding: '8px',
+            color: textColor,
+            transition: 'color 0.4s ease',
+          }}
+          aria-label="Toggle menu"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </header>
+
+      {/* Mobile Menu Overlay */}
+      {mobileMenuOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 99,
+            backgroundColor: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            paddingTop: isCompact ? '64px' : '88px',
+          }}
+          className="md:hidden"
+        >
+          <nav
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              padding: '24px clamp(20px, 4vw, 60px)',
+              gap: '4px',
+            }}
+          >
+            {navItems.map((item, i) => (
+              <MobileNavItem
+                key={item}
+                label={item}
+                onClick={() => handleNavClick(i)}
+              />
+            ))}
+            {isAuthenticated && user ? (
+              <MobileNavItem label="Sign Out" onClick={handleSignOut} />
+            ) : (
+              <MobileNavItem label="Sign In" onClick={handleSignIn} />
+            )}
+          </nav>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -151,6 +245,45 @@ function NavItem({
         whiteSpace: 'nowrap',
         fontFamily: '"Helvetica Neue", sans-serif',
         textTransform: 'uppercase',
+      }}
+    >
+      {label}
+    </button>
+  )
+}
+
+function MobileNavItem({
+  label,
+  onClick,
+}: {
+  label: string
+  onClick: () => void
+}) {
+  const [hovered, setHovered] = useState(false)
+
+  return (
+    <button
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        padding: '16px 0',
+        fontSize: '16px',
+        fontWeight: 400,
+        letterSpacing: '0.08em',
+        backgroundColor: 'transparent',
+        color: hovered ? '#666666' : '#000000',
+        border: 'none',
+        borderBottom: '1px solid #e5e5e5',
+        cursor: 'pointer',
+        transition: 'color 0.25s ease',
+        whiteSpace: 'nowrap',
+        fontFamily: '"Helvetica Neue", sans-serif',
+        textTransform: 'uppercase',
+        width: '100%',
       }}
     >
       {label}
